@@ -7,3 +7,5 @@ build/
 .pub/
 key.properties
 *.jks
+.idea/
+*.iml

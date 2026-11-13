@@ -4,6 +4,21 @@ A follow-up app for tiny teams and solo sellers. Most sales are lost because nob
 
 Built with Flutter and Supabase. Real accounts, real database, real reminders on the phone. No demo mode.
 
+There is no web demo. LeadLoop is an Android app, install the APK below.
+
+## Download the APK
+
+Download the APK from the [v0.1.0 release](https://github.com/CodeByPartho/leadloop/releases) on GitHub.
+
+## Run it
+
+```bash
+flutter pub get
+flutter run
+```
+
+Supabase setup and Android notification notes are in docs-android-setup.md, and the database schema is in schema.sql.
+
 ## What it does
 
 - Add a lead in seconds: name, WhatsApp number, where they came from, deal value

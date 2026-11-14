@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../models.dart';
 import '../services/contact_actions.dart';
 import '../services/db.dart';
+import '../services/notifications.dart';
 
 String money(String currency, double? amount) {
   if (amount == null) return '';
@@ -87,7 +88,9 @@ class LeadCard extends StatelessWidget {
                     onPressed: () async {
                       final ok = await ContactActions.openWhatsApp(lead);
                       if (ok) {
-                        await svc.markContacted(lead, 'whatsapp');
+                        final updated =
+                            await svc.markContacted(lead, 'whatsapp');
+                        await NotificationService.scheduleForLead(updated);
                         onChanged();
                       }
                     },
@@ -103,7 +106,8 @@ class LeadCard extends StatelessWidget {
                   IconButton(
                     tooltip: 'Mark contacted',
                     onPressed: () async {
-                      await svc.markContacted(lead, 'call');
+                      final updated = await svc.markContacted(lead, 'call');
+                      await NotificationService.scheduleForLead(updated);
                       onChanged();
                     },
                     icon: const Icon(Icons.check_circle_outline),

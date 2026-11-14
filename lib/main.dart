@@ -29,7 +29,7 @@ class LeadLoopApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0E7C61),
+          seedColor: const Color(0xFF39FF88),
           brightness: Brightness.dark,
         ),
         useMaterial3: true,

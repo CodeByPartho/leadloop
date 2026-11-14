@@ -5,6 +5,7 @@ import '../models.dart';
 import '../services/contact_actions.dart';
 import '../services/db.dart';
 import '../services/notifications.dart';
+import '../validation.dart';
 import 'lead_card.dart' show money;
 
 class LeadDetailPage extends StatefulWidget {
@@ -34,6 +35,99 @@ class _LeadDetailPageState extends State<LeadDetailPage> {
   }
 
   void _reload() => setState(() => _data = _load());
+
+  Future<void> _editLead() async {
+    final name = TextEditingController(text: _lead.name);
+    final phone = TextEditingController(text: _lead.phone ?? '');
+    final source = TextEditingController(text: _lead.source ?? '');
+    final value = TextEditingController(
+        text: _lead.value == null ? '' : _lead.value!.toStringAsFixed(0));
+    final notes = TextEditingController(text: _lead.notes ?? '');
+    final form = GlobalKey<FormState>();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Edit lead'),
+        content: Form(
+          key: form,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                    controller: name,
+                    decoration:
+                        const InputDecoration(labelText: 'Name *'),
+                    validator: validateName),
+                TextFormField(
+                    controller: phone,
+                    keyboardType: TextInputType.phone,
+                    decoration: const InputDecoration(
+                        labelText: 'WhatsApp number'),
+                    validator: validatePhone),
+                TextFormField(
+                    controller: source,
+                    decoration:
+                        const InputDecoration(labelText: 'Source')),
+                TextFormField(
+                    controller: value,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                        labelText: 'Deal value'),
+                    validator: validateDealValue),
+                TextFormField(
+                    controller: notes,
+                    maxLines: 3,
+                    decoration:
+                        const InputDecoration(labelText: 'Notes')),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () {
+              if (form.currentState!.validate()) {
+                Navigator.pop(context, true);
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) {
+      final updated = await _svc.updateLead(
+        _lead,
+        name: name.text.trim(),
+        phone: phone.text.trim(),
+        source: source.text.trim(),
+        notes: notes.text.trim(),
+        value: value.text.trim().isEmpty
+            ? null
+            : double.tryParse(value.text.trim()),
+      );
+      setState(() => _lead = updated);
+      _reload();
+    }
+  }
+
+  Future<void> _snooze(int days) async {
+    final updated = await _svc.snooze(_lead, days);
+    setState(() => _lead = updated);
+    await NotificationService.scheduleForLead(updated);
+    _reload();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(
+                'Follow-up snoozed $days day(s), next due ${DateFormat.yMMMd().format(updated.nextFollowUpAt)}')),
+      );
+    }
+  }
 
   Future<void> _addNote() async {
     final ctrl = TextEditingController();
@@ -138,6 +232,12 @@ class _LeadDetailPageState extends State<LeadDetailPage> {
                 await NotificationService.cancelForLead(_lead);
                 await _svc.deleteLead(_lead);
                 if (context.mounted) Navigator.pop(context);
+              } else if (s == 'edit') {
+                await _editLead();
+              } else if (s == 'snooze1') {
+                await _snooze(1);
+              } else if (s == 'snooze3') {
+                await _snooze(3);
               } else {
                 final updated = await _svc.setStatus(_lead, s);
                 setState(() => _lead = updated);
@@ -146,9 +246,17 @@ class _LeadDetailPageState extends State<LeadDetailPage> {
               }
             },
             itemBuilder: (_) => const [
-              PopupMenuItem(value: 'interested', child: Text('Mark interested')),
+              PopupMenuItem(value: 'edit', child: Text('Edit lead')),
+              PopupMenuItem(
+                  value: 'contacted', child: Text('Mark contacted')),
+              PopupMenuItem(
+                  value: 'interested', child: Text('Mark interested')),
               PopupMenuItem(value: 'won', child: Text('Mark won')),
               PopupMenuItem(value: 'lost', child: Text('Mark lost')),
+              PopupMenuItem(
+                  value: 'snooze1', child: Text('Snooze 1 day')),
+              PopupMenuItem(
+                  value: 'snooze3', child: Text('Snooze 3 days')),
               PopupMenuItem(value: 'delete', child: Text('Delete lead')),
             ],
           ),
@@ -171,6 +279,9 @@ class _LeadDetailPageState extends State<LeadDetailPage> {
               if (_lead.notes != null) Text('Notes: ${_lead.notes}'),
               Text(
                   'Added ${DateFormat.yMMMd().format(_lead.createdAt)} · next follow-up ${DateFormat.yMMMd().format(_lead.nextFollowUpAt)} (${_lead.stageLabel})'),
+              if (_lead.lastContactedAt != null)
+                Text(
+                    'Last contact ${DateFormat.yMMMd().format(_lead.lastContactedAt!)} · ladder restarts from each contact'),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
@@ -179,7 +290,10 @@ class _LeadDetailPageState extends State<LeadDetailPage> {
                     onPressed: () async {
                       final ok = await ContactActions.openWhatsApp(_lead);
                       if (ok) {
-                        await _svc.markContacted(_lead, 'whatsapp');
+                        final updated =
+                            await _svc.markContacted(_lead, 'whatsapp');
+                        setState(() => _lead = updated);
+                        await NotificationService.scheduleForLead(updated);
                         _reload();
                       }
                     },

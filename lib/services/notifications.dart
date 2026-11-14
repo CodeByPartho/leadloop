@@ -34,11 +34,12 @@ class NotificationService {
     await cancelForLead(lead);
     if (lead.isClosed) return;
     final now = DateTime.now();
-    final times = Ladder.upcoming(lead.createdAt, now, count: 4);
+    final anchor = lead.ladderAnchor;
+    final times = Ladder.upcoming(anchor, now, count: 4);
     for (var i = 0; i < times.length; i++) {
       var when = times[i].copyWith(hour: 9, minute: 30, second: 0);
       if (when.isBefore(now)) when = times[i];
-      final stage = Ladder.stageFor(lead.createdAt, times[i]);
+      final stage = Ladder.stageFor(anchor, times[i]);
       await _plugin.zonedSchedule(
         _idFor(lead, i),
         'Follow up with ${lead.name}',

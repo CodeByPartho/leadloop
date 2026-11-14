@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../duplicates.dart';
+import '../validation.dart';
 import '../services/db.dart';
 import '../services/notifications.dart';
 
@@ -32,10 +34,46 @@ class _LeadFormPageState extends State<LeadFormPage> {
     if (!_form.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
+      final name = _name.text.trim();
+      final phone =
+          _phone.text.trim().isEmpty ? null : _phone.text.trim();
+      final source =
+          _source.text.trim().isEmpty ? null : _source.text.trim();
+      // Warn before adding a lead that already exists by phone or by
+      // matching name and source. The user can still save it.
+      final existing = await LeadsService().fetchLeads();
+      final dupe = findDuplicate(existing,
+          name: name, phone: phone, source: source);
+      if (dupe != null && mounted) {
+        final keep = await showDialog<bool>(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('Possible duplicate'),
+            content: Text(
+                'A lead already exists for ${dupe.name}'
+                '${dupe.phone != null ? ' (${dupe.phone})' : ''}'
+                ', status ${dupe.status}. Save a second copy anyway?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Save anyway'),
+              ),
+            ],
+          ),
+        );
+        if (keep != true) {
+          if (mounted) setState(() => _saving = false);
+          return;
+        }
+      }
       final lead = await LeadsService().createLead(
-        name: _name.text.trim(),
-        phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
-        source: _source.text.trim().isEmpty ? null : _source.text.trim(),
+        name: name,
+        phone: phone,
+        source: source,
         notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
         value: _value.text.trim().isEmpty
             ? null
@@ -66,8 +104,7 @@ class _LeadFormPageState extends State<LeadFormPage> {
             TextFormField(
               controller: _name,
               decoration: const InputDecoration(labelText: 'Name *'),
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Name is required' : null,
+              validator: validateName,
             ),
             TextFormField(
               controller: _phone,
@@ -76,6 +113,7 @@ class _LeadFormPageState extends State<LeadFormPage> {
                 labelText: 'WhatsApp number',
                 hintText: '+8801XXXXXXXXX',
               ),
+              validator: validatePhone,
             ),
             TextFormField(
               controller: _source,
@@ -91,6 +129,7 @@ class _LeadFormPageState extends State<LeadFormPage> {
                     controller: _value,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(labelText: 'Deal value'),
+                    validator: validateDealValue,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -117,7 +156,7 @@ class _LeadFormPageState extends State<LeadFormPage> {
             const Padding(
               padding: EdgeInsets.only(top: 12),
               child: Text(
-                'Follow-up reminders are set for day 1, day 3 and day 7.',
+                'Follow-up reminders are set for day 1, day 3 and day 7 after your last contact.',
                 textAlign: TextAlign.center,
               ),
             ),

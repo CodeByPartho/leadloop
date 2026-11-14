@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
+import '../export_csv.dart';
 import '../models.dart';
+import '../payments_summary.dart';
 import '../services/db.dart';
 import 'lead_card.dart' show money;
 
@@ -24,6 +27,19 @@ class _PaymentsPageState extends State<PaymentsPage> {
 
   void _reload() => setState(() => _data = _svc.fetchPayments());
 
+  Future<void> _export(List<LeadPayment> payments) async {
+    await Clipboard.setData(
+        ClipboardData(text: paymentsToCsv(payments)));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              '${payments.length} payment(s) copied as CSV. Paste it into a spreadsheet.'),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<LeadPayment>>(
@@ -38,8 +54,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
         final all = snap.data!;
         final unpaid = all.where((p) => !p.isPaid).toList();
         final paid = all.where((p) => p.isPaid).toList();
-        final outstanding =
-            unpaid.fold<double>(0, (sum, p) => sum + p.amount);
+        final summary = paymentSummary(all, DateTime.now());
         if (all.isEmpty) {
           return const Center(
             child: Text('No payments yet. Add one from a lead page.'),
@@ -49,13 +64,50 @@ class _PaymentsPageState extends State<PaymentsPage> {
           onRefresh: () async => _reload(),
           child: ListView(
             children: [
-              ListTile(
-                title: const Text('Outstanding'),
-                trailing: Text(
-                  money(unpaid.isEmpty ? 'BDT' : unpaid.first.currency,
-                      outstanding),
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold),
+              for (final e in summary.outstandingByCurrency.entries)
+                ListTile(
+                  title: const Text('Outstanding'),
+                  trailing: Text(
+                    money(e.key, e.value),
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              if (summary.overdueByCurrency.isNotEmpty)
+                for (final e in summary.overdueByCurrency.entries)
+                  ListTile(
+                    title: const Text('Overdue'),
+                    trailing: Text(
+                      money(e.key, e.value),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.redAccent,
+                      ),
+                    ),
+                  ),
+              if (summary.paidThisMonthByCurrency.isNotEmpty)
+                for (final e in summary.paidThisMonthByCurrency.entries)
+                  ListTile(
+                    title: const Text('Received this month'),
+                    trailing: Text(
+                      money(e.key, e.value),
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+              if (summary.dueThisMonthByCurrency.isNotEmpty)
+                for (final e in summary.dueThisMonthByCurrency.entries)
+                  ListTile(
+                    title: const Text('Due this month'),
+                    trailing: Text(money(e.key, e.value)),
+                  ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () => _export(all),
+                  icon: const Icon(Icons.file_download, size: 18),
+                  label: const Text('Export CSV'),
                 ),
               ),
               const Divider(),

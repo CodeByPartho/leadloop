@@ -29,10 +29,14 @@ class Lead {
 
   bool get isClosed => status == 'won' || status == 'lost';
 
+  /// The ladder anchor: the last contact, or creation when nobody has
+  /// been contacted yet. The ladder restarts from every contact.
+  DateTime get ladderAnchor => lastContactedAt ?? createdAt;
+
   /// Which ladder step falls due at [nextFollowUpAt]:
   /// Day 1, Day 3, Day 7, then a weekly rolling nudge.
   String get stageLabel {
-    final days = nextFollowUpAt.difference(createdAt).inDays;
+    final days = nextFollowUpAt.difference(ladderAnchor).inDays;
     if (days <= 1) return 'Day 1 follow-up';
     if (days <= 3) return 'Day 3 follow-up';
     if (days <= 7) return 'Day 7 follow-up';

@@ -69,17 +69,61 @@ class LeadsService {
     return Lead.fromJson(row);
   }
 
-  /// Record that the owner reached out. Advances nothing on the ladder
-  /// (it is anchored at creation) but stamps the timeline and the
-  /// last-contacted time shown in the UI.
+  /// Record that the owner reached out. v0.2.0: the contact restarts
+  /// the follow-up ladder from now, so the next nudge is day 1 after
+  /// this contact, then day 3 and day 7. The timeline is stamped too.
   Future<Lead> markContacted(Lead lead, String kind) async {
+    final now = DateTime.now();
     final row = await db
         .from('leads')
-        .update({'last_contacted_at': DateTime.now().toIso8601String()})
+        .update({
+          'last_contacted_at': now.toIso8601String(),
+          'next_follow_up_at': Ladder.nextDue(now, now).toIso8601String(),
+        })
         .eq('id', lead.id)
         .select()
         .single();
     await logEvent(lead.id, kind, null);
+    return Lead.fromJson(row);
+  }
+
+  /// Push the next follow-up out by [days] without logging a contact.
+  /// Used by the snooze action on the lead page.
+  Future<Lead> snooze(Lead lead, int days) async {
+    final next = DateTime.now().add(Duration(days: days));
+    final row = await db
+        .from('leads')
+        .update({'next_follow_up_at': next.toIso8601String()})
+        .eq('id', lead.id)
+        .select()
+        .single();
+    await logEvent(lead.id, 'note', 'Follow-up snoozed $days day(s)');
+    return Lead.fromJson(row);
+  }
+
+  /// Edit a lead's details. Only the fields given are changed.
+  Future<Lead> updateLead(
+    Lead lead, {
+    String? name,
+    String? phone,
+    String? source,
+    String? notes,
+    double? value,
+  }) async {
+    final patch = <String, dynamic>{};
+    if (name != null) patch['name'] = name;
+    if (phone != null) patch['phone'] = phone;
+    if (source != null) patch['source'] = source;
+    if (notes != null) patch['notes'] = notes;
+    if (value != null) patch['value'] = value;
+    if (patch.isEmpty) return lead;
+    final row = await db
+        .from('leads')
+        .update(patch)
+        .eq('id', lead.id)
+        .select()
+        .single();
+    await logEvent(lead.id, 'note', 'Lead details updated');
     return Lead.fromJson(row);
   }
 

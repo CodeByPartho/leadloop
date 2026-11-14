@@ -44,6 +44,9 @@ android {
                 "META-INF/**/LICENSE.txt",
                 "META-INF/**/NOTICE",
                 "META-INF/**/NOTICE.txt",
+                // Kotlin multiplatform compiler metadata, duplicated
+                // across many jars and unused at runtime on Android.
+                "META-INF/kotlin-project-structure-metadata.json",
             )
         }
     }

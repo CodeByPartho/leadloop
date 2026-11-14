@@ -22,7 +22,6 @@ configurations.all {
     exclude(group = "androidx.datastore", module = "datastore-core-jvm")
     exclude(group = "androidx.datastore", module = "datastore-preferences-core-jvm")
     exclude(group = "androidx.collection", module = "collection-ktx")
-    exclude(group = "androidx.annotation", module = "annotation-jvm")
 }
 
 android {

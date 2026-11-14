@@ -13,6 +13,17 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// v0.2.0: transitive AndroidX artifacts ship the same classes twice
+// (datastore -android vs -jvm, collection-ktx vs collection-jvm) and
+// the release duplicate-class check fails. The -jvm variants and the
+// legacy collection-ktx artifact are never the right ones on Android:
+// their classes already live in the -android / collection-jvm artifacts.
+configurations.all {
+    exclude(group = "androidx.datastore", module = "datastore-core-jvm")
+    exclude(group = "androidx.datastore", module = "datastore-preferences-core-jvm")
+    exclude(group = "androidx.collection", module = "collection-ktx")
+}
+
 android {
     namespace = "com.example.leadloop"
     compileSdk = flutter.compileSdkVersion

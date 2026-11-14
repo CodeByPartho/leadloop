@@ -33,8 +33,11 @@ android {
         resources {
             // Kotlin/Native link metadata shipped inside both the
             // collection and okio multiplatform jars; unused on Android.
+            // The same metadata collides under every platform tree, so
+            // exclude the manifest and linkdata files, not one path.
             excludes += setOf(
-                "nativeMain/default/linkdata/root_package/0_.knm",
+                "**/default/manifest",
+                "**/default/linkdata/**",
             )
         }
     }

@@ -38,11 +38,12 @@ android {
             excludes += setOf(
                 "**/default/manifest",
                 "**/default/linkdata/**",
-                // The same LICENSE/NOTICE text ships in several jars.
-                "META-INF/LICENSE",
-                "META-INF/LICENSE.txt",
-                "META-INF/NOTICE",
-                "META-INF/NOTICE.txt",
+                // The same LICENSE/NOTICE text ships in several jars,
+                // under nested META-INF paths too.
+                "META-INF/**/LICENSE",
+                "META-INF/**/LICENSE.txt",
+                "META-INF/**/NOTICE",
+                "META-INF/**/NOTICE.txt",
             )
         }
     }

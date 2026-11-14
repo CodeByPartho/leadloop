@@ -29,6 +29,16 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
+    packaging {
+        resources {
+            // Kotlin/Native link metadata shipped inside both the
+            // collection and okio multiplatform jars; unused on Android.
+            excludes += setOf(
+                "nativeMain/default/linkdata/root_package/0_.knm",
+            )
+        }
+    }
+
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
